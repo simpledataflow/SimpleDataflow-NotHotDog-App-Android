@@ -4,7 +4,7 @@
 
 ### Text tutorial: https://simpledataflow.com/dataflow-tutorial-build-not-hotdog-android-app-from-silicon-valley-tv-series-with-machine-learning/  
 
-In the tutorial, you will create the application mentioned in the TV series “Silicon Valley”. This application allows you to take a picture of your food and see whether it is a hotdog or not.
+In the tutorial, you will create the application mentioned in the TV series “Silicon Valley”. This application allows you to see whether a meal is a hotdog or not.
 
 
 ![Alt Text](readmeRes/nothotdog.gif)
