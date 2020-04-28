@@ -25,6 +25,34 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
+// Simple dataflow: Not Hotdog app in 250 lines of code
+// This is a final version of the tutorial's code, you can run the app to test it
+
+// Text tutorial: https://simpledataflow.com/dataflow-tutorial-build-not-hotdog-android-app-from-silicon-valley-tv-series-with-machine-learning/
+// Video tutorial: https://youtu.be/vzuU3XbbTOM
+
+// Quick overview
+// Model training
+// 0. Train model in Colab or locally on your machine
+
+// Inference
+// Create project
+// 1. Add model.tflite by right-clicking on the app folder -> New -> Other -> Tensorflow Lite model
+// 2. Add Tensorflow Lite gradle dependencies + aapt options
+// 3. Build UI
+// 4. Create a method processImage that accepts Bitmap
+// 5. Create a a method to test if classification goes correctly
+
+// Camera
+// 6. Add CameraX dependencies
+// 7. Add camera permission to the manifest
+// 8. handle camera permissions
+// 9. Create method to update transform
+// 10. Create method to convert Image to Bitmap
+// 11. Create two use cases: preview and analysis
+
+// 12. Run the app
+
     // Constants for permissions
     companion object {
         const val REQUEST_CODE_PERMISSIONS = 5
@@ -36,9 +64,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         if (hasPermission()) {
-            // .post ensures that camera is started
-            // only if view was initialized (displayed on the UI)
-            view_finder.post { startCamera() }
+            view_finder.post { startCamera() } // .post ensures that camera is started only if view was initialized (displayed on the UI)
         } else {
             requestPermission()
         }
@@ -100,6 +126,28 @@ class MainActivity : AppCompatActivity() {
         CameraX.bindToLifecycle(this, preview, analyzerUseCase)
     }
 
+    private fun ImageProxy.toBitmap(): Bitmap {
+        val yBuffer = planes[0].buffer // Y
+        val uBuffer = planes[1].buffer // U
+        val vBuffer = planes[2].buffer // V
+
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+
+        val nv21 = ByteArray(ySize + uSize + vSize)
+
+        yBuffer.get(nv21, 0, ySize)
+        vBuffer.get(nv21, ySize, vSize)
+        uBuffer.get(nv21, ySize + vSize, uSize)
+
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, this.width, this.height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
+        val imageBytes = out.toByteArray()
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    }
+
     private fun updateTransform() {
         val matrix = Matrix()
 
@@ -121,26 +169,32 @@ class MainActivity : AppCompatActivity() {
         view_finder.setTransform(matrix)
     }
 
-    private fun ImageProxy.toBitmap(): Bitmap {
-        val yBuffer = planes[0].buffer // Y
-        val uBuffer = planes[1].buffer // U
-        val vBuffer = planes[2].buffer // V
+    /**
+     * Permissions
+     */
+    // checking if we have permission already
+    private fun hasPermission(): Boolean =
+        checkSelfPermission(REQUIRED_PERMISSION) == PackageManager.PERMISSION_GRANTED
 
-        val ySize = yBuffer.remaining()
-        val uSize = uBuffer.remaining()
-        val vSize = vBuffer.remaining()
+    // requesting permission
+    private fun requestPermission() =
+        requestPermissions(arrayOf(REQUIRED_PERMISSION), REQUEST_CODE_PERMISSIONS)
 
-        val nv21 = ByteArray(ySize + uSize + vSize)
-
-        yBuffer.get(nv21, 0, ySize)
-        vBuffer.get(nv21, ySize, vSize)
-        uBuffer.get(nv21, ySize + vSize, uSize)
-
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, this.width, this.height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
-        val imageBytes = out.toByteArray()
-        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    // after user granted (or not) checking if permission was granted
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (hasPermission()) {
+                startCamera()
+            } else {
+                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT)
+                    .show()
+                finish()
+            }
+        }
     }
 
 
@@ -195,34 +249,4 @@ class MainActivity : AppCompatActivity() {
             Log.d("sdf", "Exception is " + e.localizedMessage)
         }
     }
-
-    /**
-     * Permissions
-     */
-    // checking if we have permission already
-    private fun hasPermission(): Boolean =
-        checkSelfPermission(REQUIRED_PERMISSION) == PackageManager.PERMISSION_GRANTED
-
-    // requesting permission
-    private fun requestPermission() =
-        requestPermissions(arrayOf(REQUIRED_PERMISSION), REQUEST_CODE_PERMISSIONS)
-
-    // after user granted (or not) checking if permission was granted
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (hasPermission()) {
-                startCamera()
-            } else {
-                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT)
-                    .show()
-                finish()
-            }
-        }
-    }
 }
-
-
